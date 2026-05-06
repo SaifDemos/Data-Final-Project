@@ -43,4 +43,17 @@ public class LinkedList<T> {
         }
         System.out.println();
     }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder("[");
+        LLNode<T> temp = head;
+        while (temp != null) {
+            sb.append(temp.data);
+            if (temp.next != null) sb.append(", ");
+            temp = temp.next;
+        }
+        sb.append("]");
+        return sb.toString();
+    }
 }

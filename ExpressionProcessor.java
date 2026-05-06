@@ -157,8 +157,40 @@ public class ExpressionProcessor {
         return postorderString(root.left) + postorderString(root.right) + root.value + " ";
     }
 
+    // Extract all numbers from tokenized expression
+    public static Queue<Double> extractNumbers(Queue<String> tokens) {
+        Queue<Double> numbers = new Queue<>();
+        Queue<String> copy = new Queue<>(tokens);
+        while (!copy.isEmpty()) {
+            String token = copy.poll();
+            if (isNumeric(token)) {
+                numbers.add(Double.parseDouble(token));
+            }
+        }
+        return numbers;
+    }
+
+    // Validate expression before processing
+    public static boolean isValidExpression(String expr) {
+        try {
+            Queue<String> tokens = tokenize(expr);
+            if (tokens.isEmpty()) return false;
+            Queue<String> copy = new Queue<>(tokens);
+            infixToPostfix(copy);
+            copy = new Queue<>(tokens);
+            Queue<String> postfix = infixToPostfix(copy);
+            Queue<String> evalCopy = new Queue<>(postfix);
+            evaluatePostfix(evalCopy);
+            return true;
+        } catch (ArithmeticException e) {
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     // Process a single expression and return formatted output string
-    public static String processExpression(String expr) {
+    public static String processExpression(String expr, int tableSize) {
         Queue<String> tokens = tokenize(expr);
         Queue<String> tokensCopyForPostfix = new Queue<>(tokens);
 
@@ -186,24 +218,50 @@ public class ExpressionProcessor {
         sb.append("Inorder: ").append(inorderString(root).trim()).append("\n");
         sb.append("Postorder: ").append(postorderString(root).trim()).append("\n");
 
-        HashTable hashTable = new HashTable();
-        hashTable.insertLinear(result);
-        hashTable.insertQuadratic(result);
-        hashTable.insertDoubleHash(result);
-        hashTable.insertChaining(result);
+        Queue<Double> numbers = extractNumbers(tokens);
+        sb.append("\nExtracted Numbers: ").append(numbers).append("\n");
+
+        HashTable hashTable = new HashTable(tableSize);
+        boolean linearOk = true, quadraticOk = true, doubleOk = true;
+
+        Queue<Double> numCopy = new Queue<>(numbers);
+        while (!numCopy.isEmpty()) {
+            double val = numCopy.poll();
+            if (!hashTable.insertLinear(val)) linearOk = false;
+            if (!hashTable.insertQuadratic(val)) quadraticOk = false;
+            if (!hashTable.insertDoubleHash(val)) doubleOk = false;
+            hashTable.insertChaining(val);
+        }
+
+        sb.append("\nHash Tables (size=").append(tableSize).append("):\n");
+        String linearDisplay = hashTable.displayLinear();
+        if (!linearOk) linearDisplay += "  NOT ENOUGH TABLE SPACE\n";
+        sb.append(linearDisplay);
+        String quadraticDisplay = hashTable.displayQuadratic();
+        if (!quadraticOk) quadraticDisplay += "  NOT ENOUGH TABLE SPACE\n";
+        sb.append(quadraticDisplay);
+        String doubleDisplay = hashTable.displayDoubleHash();
+        if (!doubleOk) doubleDisplay += "  NOT ENOUGH TABLE SPACE\n";
+        sb.append(doubleDisplay);
+        sb.append(hashTable.displayChaining());
 
         return sb.toString();
     }
 
     // STEP 5: Hash Table
     static class HashTable {
-        int size = 10;
-        Double[] tableLinear = new Double[size];
-        Double[] tableQuadratic = new Double[size];
-        Double[] tableDouble = new Double[size];
-        LinkedList<Double>[] tableChaining = new LinkedList[size];
+        int size;
+        Double[] tableLinear;
+        Double[] tableQuadratic;
+        Double[] tableDouble;
+        LinkedList<Double>[] tableChaining;
 
-        public HashTable() {
+        public HashTable(int size) {
+            this.size = size;
+            tableLinear = new Double[size];
+            tableQuadratic = new Double[size];
+            tableDouble = new Double[size];
+            tableChaining = new LinkedList[size];
             for (int i = 0; i < size; i++) {
                 tableChaining[i] = new LinkedList<>();
             }
@@ -216,47 +274,100 @@ public class ExpressionProcessor {
 
         // Secondary Hash Function for Double Hashing
         private int hash2(double value) {
-            return 7 - Math.abs((int) Math.round(value) % 7);
+            return 7 - Math.abs((int) Math.round(value) % size);
         }
 
         // Linear Probing
-        public void insertLinear(double value) {
+        public boolean insertLinear(double value) {
             int index = hash(value);
             int i = 0;
             while (tableLinear[(index + i) % size] != null && i < size) {
                 i++;
             }
-            if (i < size)
+            if (i < size) {
                 tableLinear[(index + i) % size] = value;
+                return true;
+            }
+            return false;
         }
 
         // Quadratic Probing
-        public void insertQuadratic(double value) {
+        public boolean insertQuadratic(double value) {
             int index = hash(value);
             int i = 0;
             while (tableQuadratic[(index + i * i) % size] != null && i < size) {
                 i++;
             }
-            if (i < size)
+            if (i < size) {
                 tableQuadratic[(index + i * i) % size] = value;
+                return true;
+            }
+            return false;
         }
 
         // Double Hashing
-        public void insertDoubleHash(double value) {
+        public boolean insertDoubleHash(double value) {
             int index = hash(value);
             int step = hash2(value);
             int i = 0;
             while (tableDouble[(index + i * step) % size] != null && i < size) {
                 i++;
             }
-            if (i < size)
+            if (i < size) {
                 tableDouble[(index + i * step) % size] = value;
+                return true;
+            }
+            return false;
         }
 
         // Separate Chaining
         public void insertChaining(double value) {
             int index = hash(value);
             tableChaining[index].add(value);
+        }
+
+        public String displayLinear() {
+            return displayOpenAddressing(tableLinear, "Linear Probing");
+        }
+
+        public String displayQuadratic() {
+            return displayOpenAddressing(tableQuadratic, "Quadratic Probing");
+        }
+
+        public String displayDoubleHash() {
+            return displayOpenAddressing(tableDouble, "Double Hashing");
+        }
+
+        public String displayChaining() {
+            return displayChainTable("Separate Chaining");
+        }
+
+        private String displayOpenAddressing(Double[] table, String label) {
+            StringBuilder sb = new StringBuilder();
+            sb.append(label).append(":\n  ");
+            for (int i = 0; i < size; i++) {
+                String val = table[i] == null ? "null" : table[i].toString();
+                if (i == size - 1) {
+                    sb.append(String.format("[%d]: %s\n", i, val));
+                } else {
+                    sb.append(String.format("[%d]: %s  ", i, val));
+                }
+            }
+            return sb.toString();
+        }
+
+        private String displayChainTable(String label) {
+            StringBuilder sb = new StringBuilder();
+            sb.append(label).append(":\n  ");
+            for (int i = 0; i < size; i++) {
+                String val = tableChaining[i].count() == 0 ? "empty" : tableChaining[i].toString();
+                if (i == size - 1) {
+                    sb.append(String.format("[%d]: %s\n", i, val));
+                } else {
+                    sb.append(String.format("[%d]: %s  ", i, val));
+                }
+            }
+            return sb.toString();
         }
     }
 

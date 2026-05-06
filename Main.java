@@ -27,16 +27,42 @@ void main() {
                 System.out.println("Error: Empty expression");
                 continue;
             }
-            try {
-                System.out.println(ExpressionProcessor.processExpression(expr));
-            } catch (ArithmeticException e) {
-                System.out.println("Output:");
-                System.out.println("Error: " + e.getMessage());
-            } catch (Exception e) {
-                System.out.println("Output:");
+            if (!ExpressionProcessor.isValidExpression(expr)) {
                 System.out.println("Error: Invalid Expression");
+                continue;
+            }
+            System.out.print("Enter hash table size: ");
+            String sizeInput = scanner.nextLine().trim();
+            int tableSize;
+            try {
+                tableSize = Integer.parseInt(sizeInput);
+                if (tableSize <= 0) {
+                    System.out.println("Error: Table size must be a positive integer");
+                    continue;
+                }
+            } catch (NumberFormatException e) {
+                System.out.println("Error: Invalid table size");
+                continue;
+            }
+            try {
+                System.out.println(ExpressionProcessor.processExpression(expr, tableSize));
+            } catch (ArithmeticException e) {
+                System.out.println("Error: " + e.getMessage());
             }
         } else if (choice.equals("2")) {
+            System.out.print("Enter hash table size: ");
+            String sizeInput = scanner.nextLine().trim();
+            int tableSize;
+            try {
+                tableSize = Integer.parseInt(sizeInput);
+                if (tableSize <= 0) {
+                    System.out.println("Error: Table size must be a positive integer");
+                    continue;
+                }
+            } catch (NumberFormatException e) {
+                System.out.println("Error: Invalid table size");
+                continue;
+            }
             try {
                 String content = Files.readString(Path.of("input.txt"));
                 String[] lines = content.split("\n");
@@ -48,7 +74,7 @@ void main() {
                     if (trimmed.isEmpty()) continue;
                     hasContent = true;
                     try {
-                        fileOutput.append(ExpressionProcessor.processExpression(trimmed)).append("\n");
+                        fileOutput.append(ExpressionProcessor.processExpression(trimmed, tableSize)).append("\n");
                     } catch (ArithmeticException e) {
                         fileOutput.append("Expression: ").append(trimmed).append("\n");
                         fileOutput.append("Output:\n");
