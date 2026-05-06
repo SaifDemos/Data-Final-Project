@@ -4,18 +4,6 @@ A Data Structures class final project that reads infix expressions, converts the
 
 ---
 
-## How to Run
-
-All commands must be run from inside the `src/` directory:
-
-```bash
-./compile.sh    # Compile all .java files
-./run.sh        # Run the program
-./clean.sh      # Delete all .class files
-```
-
----
-
 ## Program Flow (The Pipeline)
 
 When you enter an expression like `3 + 4 * 2 / (1 - 5) ^ 2`, it goes through **5 steps**:
